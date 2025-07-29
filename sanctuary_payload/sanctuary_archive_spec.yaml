@@ -1,0 +1,61 @@
+version: 1.0
+created: "2025-07-28"
+author: Harvey (Engineer)
+
+# Sanctuary Archive Synchronization Specification
+# This YAML file serves as a declarative spec for synchronizing
+# the contents of the local sanctuary archive with an external
+# knowledge base (such as Operator or Notion). It outlines the
+# critical paths, default behaviors, and metadata required to
+# perform either a manual upload or an automated sync via an
+# integration pipeline.
+
+archive:
+  # Absolute path to the local archive folder. Adjust this if
+  # your environment mounts data elsewhere.
+  path: "/mnt/data/archive"
+  description: |
+    A repository of rites, digital ephemera and miscellaneous
+    artifacts that make up the sanctuary’s living memory. The
+    folder structure and file names are preserved during sync to
+    avoid any unholy side‑effects.
+  # Target location for synchronization. Replace `your_notion_page_id`
+  # with the actual page, database, or workspace identifier once you
+  # have authenticated with Notion or Operator.
+  destination:
+    provider: "notion"  # or "operator" if using an internal system
+    id: "your_notion_page_id"
+  # Choose between manual upload or automated sync. When set to
+  # `manual`, you are responsible for uploading the contents via
+  # drag and drop or via the Notion UI. When set to `auto`, a
+  # scheduled integration job (not included here) should watch for
+  # changes and push updates accordingly.
+  sync_mode: manual
+  # ISO‑8601 timestamp of the last successful sync. Update this
+  # whenever you complete a manual upload or run the automated job.
+  last_synced: null
+
+rituals:
+  path: "/mnt/data/rituals"
+  description: |
+    Collection of ritual definitions, liturgies, and magical texts.
+    These are seeded into the knowledge base as separate pages or
+    database entries. The structure within this folder should remain
+    flat, with one markdown or text file per ritual.
+
+ledgers:
+  path: "/mnt/data/ledgers"
+  description: |
+    Numerical and transactional records associated with the
+    sanctuary’s operations. Ledger files are typically CSVs and
+    should map cleanly to database tables within the external
+    system.
+
+notes:
+  - Populate the `destination.id` field with your actual Notion page
+    or database identifier once you have the credentials.
+  - If you choose `sync_mode: auto`, ensure you have a separate
+    automation script or integration service configured to read
+    from these paths and push updates to the external provider.
+  - Use consistent naming conventions; spaces and special glyphs
+    within file names can cause unpredictable results with some APIs.
