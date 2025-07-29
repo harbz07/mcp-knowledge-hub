@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MCP Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a2e; color: white; }
+        .test-btn { background: #7dd3fc; color: #0f172a; padding: 10px 20px; border: none; border-radius: 8px; margin: 10px; cursor: pointer; }
+        .result { background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .error { background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.3); }
+        .success { background: rgba(34,197,94,0.2); border: 1px solid rgba(34,197,94,0.3); }
+    </style>
+</head>
+<body>
+    <h1>MCP Server Debug Test</h1>
+    <button class="test-btn" onclick="testConnection()">Test Connection</button>
+    <button class="test-btn" onclick="getContexts()">Get Contexts</button>
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'https://knowledge-hub-mcp.harveytagalicud7.workers.dev';
+        
+        async function makeRequest(method, arguments) {
+            const requestBody = {
+                jsonrpc: "2.0",
+                id: Math.floor(Math.random() * 10000),
+                method: "tools/call",
+                params: {
+                    name: method,
+                    arguments: arguments
+                }
+            };
+
+            console.log('Making request:', requestBody);
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+                
+                return data.result;
+            } catch (error) {
+                console.error('Request failed:', error);
+                throw new Error(`Request failed: ${error.message}`);
+            }
+        }
+
+        async function testConnection() {
+            showResult('Testing connection...', 'info');
+            
+            try {
+                const result = await makeRequest('get_recent_contexts', { limit: 1 });
+                showResult('✅ Server connection successful!', 'success');
+            } catch (error) {
+                showResult(`❌ Connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function getContexts() {
+            showResult('Fetching contexts...', 'info');
+            
+            try {
+                const result = await makeRequest('get_recent_contexts', { limit: 5 });
+                showResult(`✅ Retrieved ${result.content?.length || 0} contexts`, 'success');
+                
+                if (result.content && result.content.length > 0) {
+                    const contexts = JSON.parse(result.content[1]);
+                    showResult(`Found contexts: ${contexts.map(c => c.content.substring(0, 50)).join(', ')}`, 'success');
+                }
+            } catch (error) {
+                showResult(`❌ Failed to get contexts: ${error.message}`, 'error');
+            }
+        }
+
+        function showResult(message, type) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+    </script>
+</body>
+</html> 

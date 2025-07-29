@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>LLM Knowledge Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Sanctuary-inspired MCP Knowledge Hub */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e8f4fd;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Stars Background */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #7dd3fc;
+            text-shadow: 0 0 20px rgba(125, 211, 252, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 20px;
+            color: #4ade80;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 0 40px 40px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .left-column,
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(125, 211, 252, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .card h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #7dd3fc;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(125, 211, 252, 0.3);
+        }
+
+        /* File Browser Card */
+        .file-browser {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            color: #7dd3fc;
+            padding-left: 10px;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-icon {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            background: rgba(125, 211, 252, 0.1);
+            border: 1px solid rgba(125, 211, 252, 0.3);
+            border-radius: 8px;
+            color: #7dd3fc;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(125, 211, 252, 0.2);
+            transform: scale(1.05);
+        }
+
+        /* Content Submission Card */
+        .submission-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            color: rgba(232, 244, 253, 0.8);
+            font-weight: 500;
+        }
+
+        .form-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: #e8f4fd;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(125, 211, 252, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #7dd3fc 0%, #38bdf8 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(125, 211, 252, 0.4);
+        }
+
+        /* Server Testing Card */
+        .test-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .test-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: #e8f4fd;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .test-btn:hover {
+            background: rgba(125, 211, 252, 0.1);
+            border-color: rgba(125, 211, 252, 0.3);
+            color: #7dd3fc;
+        }
+
+        /* Context Display Card */
+        .context-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .context-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .context-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(125, 211, 252, 0.2);
+        }
+
+        .context-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .context-source {
+            font-weight: 600;
+            color: #7dd3fc;
+            font-size: 0.9rem;
+        }
+
+        .context-tags {
+            display: flex;
+            gap: 5px;
+        }
+
+        .context-tag {
+            background: rgba(125, 211, 252, 0.1);
+            border: 1px solid rgba(125, 211, 252, 0.3);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            color: #7dd3fc;
+        }
+
+        .context-content {
+            font-size: 0.85rem;
+            color: rgba(232, 244, 253, 0.8);
+            line-height: 1.4;
+        }
+
+        /* Status Messages */
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status.success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status.info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .top-bar {
+                flex-direction: column;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 0 20px 20px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(125, 211, 252, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(125, 211, 252, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    
+    <div class="top-bar">
+        <div class="title">LLM Knowledge Hub</div>
+        <div class="server-status">
+            <div class="status-dot"></div>
+            <span>MCP Server Online</span>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="left-column">
+            <!-- File Browser Card -->
+            <div class="card file-browser">
+                <h3>📁 Knowledge Files</h3>
+                <div id="fileList">
+                    <div class="file-item">
+                        <div>
+                            <span class="file-icon">📄</span>
+                            <span>Loading files...</span>
+                        </div>
+                        <div class="file-actions">
+                            <button class="action-btn">View</button>
+                            <button class="action-btn">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Submission Card -->
+            <div class="card">
+                <h3>✨ Submit Knowledge</h3>
+                <form class="submission-form" id="submissionForm">
+                    <div class="form-group">
+                        <label for="content">Content</label>
+                        <textarea id="content" class="form-input form-textarea" placeholder="Enter your knowledge content here..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="tags">Tags (comma-separated)</label>
+                        <input type="text" id="tags" class="form-input" placeholder="mcp, knowledge, test">
+                    </div>
+                    <div class="form-group">
+                        <label for="source">Source</label>
+                        <input type="text" id="source" class="form-input" placeholder="claude-conversation">
+                    </div>
+                    <button type="submit" class="submit-btn">Submit to Knowledge Hub</button>
+                </form>
+                <div id="submissionStatus"></div>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <!-- Server Testing Card -->
+            <div class="card">
+                <h3>🔧 Server Testing</h3>
+                <div class="test-section">
+                    <button class="test-btn" onclick="testConnection()">
+                        🟢 Test Server Connection
+                    </button>
+                    <button class="test-btn" onclick="getRecentContexts()">
+                        📋 Get Recent Contexts
+                    </button>
+                    <button class="test-btn" onclick="listFiles()">
+                        📁 List All Files
+                    </button>
+                    <button class="test-btn" onclick="searchContexts()">
+                        🔍 Search Contexts
+                    </button>
+                </div>
+                <div id="testResults"></div>
+            </div>
+
+            <!-- Context Display Card -->
+            <div class="card">
+                <h3>💎 Recent Knowledge</h3>
+                <div class="context-list" id="contextList">
+                    <div class="context-item">
+                        <div class="context-header">
+                            <span class="context-source">Loading...</span>
+                            <div class="context-tags">
+                                <span class="context-tag">loading</span>
+                            </div>
+                        </div>
+                        <div class="context-content">Loading recent contexts...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MCP Knowledge Hub JavaScript
+        const API_URL = 'https://knowledge-hub-mcp.harveytagalicud7.workers.dev';
+
+        // Create animated stars
+        function createStars() {
+            const starsContainer = document.querySelector('.stars');
+            const starCount = 50;
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.cssText = `
+                    left: ${Math.random() * 100}%;
+                    top: ${Math.random() * 100}%;
+                    animation-delay: ${Math.random() * 2}s;
+                    animation-duration: ${Math.random() * 3 + 2}s;
+                `;
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // MCP API Functions
+        async function makeRequest(method, arguments) {
+            const requestBody = {
+                jsonrpc: "2.0",
+                id: Math.floor(Math.random() * 10000),
+                method: "tools/call",
+                params: {
+                    name: method,
+                    arguments: arguments
+                }
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+                
+                return data.result;
+            } catch (error) {
+                throw new Error(`Request failed: ${error.message}`);
+            }
+        }
+
+        // Test server connection
+        async function testConnection() {
+            showStatus('testResults', 'Testing connection...', 'info');
+            
+            try {
+                const result = await makeRequest('get_recent_contexts', { limit: 1 });
+                showStatus('testResults', '✅ Server connection successful!', 'success');
+            } catch (error) {
+                showStatus('testResults', `❌ Connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Get recent contexts
+        async function getRecentContexts() {
+            showStatus('testResults', 'Fetching recent contexts...', 'info');
+            
+            try {
+                const result = await makeRequest('get_recent_contexts', { limit: 5 });
+                showStatus('testResults', `✅ Retrieved ${result.content?.length || 0} contexts`, 'success');
+                updateContextList(result.content || []);
+            } catch (error) {
+                showStatus('testResults', `❌ Failed to get contexts: ${error.message}`, 'error');
+            }
+        }
+
+        // List files
+        async function listFiles() {
+            showStatus('testResults', 'Fetching files...', 'info');
+            
+            try {
+                const result = await makeRequest('list_files', { limit: 10 });
+                showStatus('testResults', `✅ Found ${result.content?.length || 0} files`, 'success');
+                updateFileList(result.content || []);
+            } catch (error) {
+                showStatus('testResults', `❌ Failed to list files: ${error.message}`, 'error');
+            }
+        }
+
+        // Search contexts
+        async function searchContexts() {
+            const query = prompt('Enter search term:');
+            if (!query) return;
+            
+            showStatus('testResults', 'Searching contexts...', 'info');
+            
+            try {
+                const result = await makeRequest('search_contexts', { query, limit: 5 });
+                showStatus('testResults', `✅ Found ${result.content?.length || 0} matching contexts`, 'success');
+                updateContextList(result.content || []);
+            } catch (error) {
+                showStatus('testResults', `❌ Search failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Update file list
+        function updateFileList(files) {
+            const fileList = document.getElementById('fileList');
+            
+            if (files.length === 0) {
+                fileList.innerHTML = '<div class="file-item"><span>No files found</span></div>';
+                return;
+            }
+
+            fileList.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div>
+                        <span class="file-icon">📄</span>
+                        <span>${file.filename || 'Unknown file'}</span>
+                    </div>
+                    <div class="file-actions">
+                        <button class="action-btn" onclick="viewFile('${file.filename}')">View</button>
+                        <button class="action-btn" onclick="deleteFile('${file.filename}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update context list
+        function updateContextList(contexts) {
+            const contextList = document.getElementById('contextList');
+            
+            if (contexts.length === 0) {
+                contextList.innerHTML = '<div class="context-item"><div class="context-content">No contexts found</div></div>';
+                return;
+            }
+
+            contextList.innerHTML = contexts.map(context => `
+                <div class="context-item">
+                    <div class="context-header">
+                        <span class="context-source">${context.source || 'Unknown source'}</span>
+                        <div class="context-tags">
+                            ${(context.tags || []).map(tag => `<span class="context-tag">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="context-content">${context.content?.substring(0, 150) || 'No content'}${context.content?.length > 150 ? '...' : ''}</div>
+                </div>
+            `).join('');
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            
+            // Clear status after 5 seconds
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        // Handle form submission
+        document.getElementById('submissionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const content = document.getElementById('content').value;
+            const tags = document.getElementById('tags').value;
+            const source = document.getElementById('source').value;
+            
+            if (!content.trim()) {
+                showStatus('submissionStatus', 'Please enter some content', 'error');
+                return;
+            }
+            
+            showStatus('submissionStatus', 'Submitting to knowledge hub...', 'info');
+            
+            try {
+                const result = await makeRequest('store_context', {
+                    content: content,
+                    tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+                    source: source || 'sanctuary-ui'
+                });
+                
+                showStatus('submissionStatus', '✅ Successfully submitted to knowledge hub!', 'success');
+                document.getElementById('submissionForm').reset();
+                
+                // Refresh contexts
+                setTimeout(() => {
+                    getRecentContexts();
+                }, 1000);
+                
+            } catch (error) {
+                showStatus('submissionStatus', `❌ Submission failed: ${error.message}`, 'error');
+            }
+        });
+
+        // File actions
+        function viewFile(filename) {
+            alert(`Viewing file: ${filename}\n\nThis would open the file content in a modal or new page.`);
+        }
+
+        function deleteFile(filename) {
+            if (confirm(`Are you sure you want to delete ${filename}?`)) {
+                alert(`Deleting file: ${filename}\n\nThis would call the delete_file method.`);
+            }
+        }
+
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create animated stars
+            createStars();
+            
+            // Load initial data
+            getRecentContexts();
+            listFiles();
+            
+            // Test connection on load
+            setTimeout(() => {
+                testConnection();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 
