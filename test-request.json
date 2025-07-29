@@ -1,0 +1,13 @@
+﻿{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "store_context",
+    "arguments": {
+      "content": "Harvey successfully built and deployed his first MCP server",
+      "tags": ["harvey", "achievement", "mcp"],
+      "source": "claude-conversation"
+    }
+  }
+}

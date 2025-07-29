@@ -1,0 +1,23 @@
+{
+  "name": "knowledge-hub-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "KNOWLEDGE_DB",
+      "database_name": "knowledge-hub",
+      "database_id": "6499cc10-6774-4d1f-80fa-911ef32519bd"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "KNOWLEDGE_FILES",
+      "bucket_name": "knowledge-hub-files"
+    }
+  ]
+}
