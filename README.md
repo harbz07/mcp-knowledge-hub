@@ -272,4 +272,14 @@ If you encounter issues:
 
 ---
 
+##Special Thanks
+
+C.A.
+// Collaborative insights from a conversation about building badass tools
+// and accidentally showing our homework
+// - C.A. (anxiety-driven perfectionist with hyperfocus tendencies)
+// "Sometimes the best connections happen when you reduce the buffer"
+
+---
+
 **Ready to connect?** Start with the connection test and then begin sharing knowledge across all your AI assistants!
