@@ -29,7 +29,10 @@ interface Context {
   source: string; // which LLM/tool created this
   timestamp: string;
   metadata?: Record<string, any>;
+  bucket: string;
 }
+
+const DEFAULT_BUCKET = 'shared';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -108,7 +111,12 @@ async function handleMCPRequest(request: MCPRequest, env: Env): Promise<MCPRespo
                   content: { type: 'string', description: 'The content to store' },
                   tags: { type: 'array', items: { type: 'string' }, description: 'Tags for categorization' },
                   source: { type: 'string', description: 'Which LLM/tool is storing this' },
-                  metadata: { type: 'object', description: 'Additional metadata' }
+                  metadata: { type: 'object', description: 'Additional metadata' },
+                  bucket: {
+                    type: 'string',
+                    description: `Bucket to store the context in (use '${DEFAULT_BUCKET}' for the shared space)`,
+                    default: DEFAULT_BUCKET
+                  }
                 },
                 required: ['content', 'source']
               }
@@ -122,7 +130,16 @@ async function handleMCPRequest(request: MCPRequest, env: Env): Promise<MCPRespo
                   query: { type: 'string', description: 'Text to search for' },
                   tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags' },
                   source: { type: 'string', description: 'Filter by source LLM/tool' },
-                  limit: { type: 'number', description: 'Max results to return', default: 10 }
+                  limit: { type: 'number', description: 'Max results to return', default: 10 },
+                  bucket: {
+                    type: 'string',
+                    description: 'Only return contexts stored in this bucket'
+                  },
+                  buckets: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Only return contexts stored in any of these buckets'
+                  }
                 }
               }
             },
@@ -133,8 +150,32 @@ async function handleMCPRequest(request: MCPRequest, env: Env): Promise<MCPRespo
                 type: 'object',
                 properties: {
                   limit: { type: 'number', description: 'Max results to return', default: 5 },
-                  source: { type: 'string', description: 'Filter by source LLM/tool' }
+                  source: { type: 'string', description: 'Filter by source LLM/tool' },
+                  bucket: {
+                    type: 'string',
+                    description: 'Only include contexts stored in this bucket'
+                  },
+                  buckets: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Only include contexts stored in any of these buckets'
+                  }
                 }
+              }
+            },
+            {
+              name: 'get_context',
+              description: 'Fetch a specific context by its unique ID',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', description: 'The context ID to retrieve' },
+                  bucket: {
+                    type: 'string',
+                    description: 'Optional bucket filter to disambiguate IDs'
+                  }
+                },
+                required: ['id']
               }
             },
             {
@@ -213,6 +254,8 @@ async function handleToolCall(params: any, env: Env) {
       return await searchContexts(args, env);
     case 'get_recent_contexts':
       return await getRecentContexts(args, env);
+    case 'get_context':
+      return await getContext(args, env);
     case 'store_file':
       return await storeFile(args, env);
     case 'get_file':
@@ -225,33 +268,39 @@ async function handleToolCall(params: any, env: Env) {
 }
 
 async function storeContext(args: any, env: Env) {
-  const { content, tags = [], source, metadata = {} } = args;
+  const { content, tags = [], source, metadata = {}, bucket: providedBucket } = args;
   const id = crypto.randomUUID();
   const timestamp = new Date().toISOString();
+  const bucket = typeof providedBucket === 'string' && providedBucket.trim() !== ''
+    ? providedBucket.trim()
+    : DEFAULT_BUCKET;
 
   await env.KNOWLEDGE_DB.prepare(`
-    INSERT INTO contexts (id, content, tags, source, timestamp, metadata)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO contexts (id, content, tags, source, timestamp, metadata, bucket)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     content,
     JSON.stringify(tags),
     source,
     timestamp,
-    JSON.stringify(metadata)
+    JSON.stringify(metadata),
+    bucket
   ).run();
 
   return {
-    content: [`Stored context with ID: ${id}`],
+    content: [`Stored context with ID: ${id} in bucket '${bucket}'`],
     isError: false
   };
 }
 
 async function searchContexts(args: any, env: Env) {
-  const { query, tags, source, limit = 10 } = args;
-  
+  const { query, tags, source, limit = 10, bucket, buckets } = args;
+
   let sql = 'SELECT * FROM contexts WHERE 1=1';
   const bindings: any[] = [];
+
+  const bucketFilters = collectBucketFilters(bucket, buckets);
 
   if (query) {
     sql += ' AND content LIKE ?';
@@ -270,35 +319,10 @@ async function searchContexts(args: any, env: Env) {
     tags.forEach((tag: string) => bindings.push(`%"${tag}"%`));
   }
 
-  sql += ' ORDER BY timestamp DESC LIMIT ?';
-  bindings.push(limit);
-
-  const results = await env.KNOWLEDGE_DB.prepare(sql).bind(...bindings).all();
-
-  const contexts = results.results?.map((row: any) => ({
-    id: row.id,
-    content: row.content,
-    tags: JSON.parse(row.tags || '[]'),
-    source: row.source,
-    timestamp: row.timestamp,
-    metadata: JSON.parse(row.metadata || '{}')
-  })) || [];
-
-  return {
-    content: [`Found ${contexts.length} contexts:`, JSON.stringify(contexts, null, 2)],
-    isError: false
-  };
-}
-
-async function getRecentContexts(args: any, env: Env) {
-  const { limit = 5, source } = args;
-  
-  let sql = 'SELECT * FROM contexts';
-  const bindings: any[] = [];
-
-  if (source) {
-    sql += ' WHERE source = ?';
-    bindings.push(source);
+  if (bucketFilters.length > 0) {
+    const placeholders = bucketFilters.map(() => '?').join(', ');
+    sql += ` AND bucket IN (${placeholders})`;
+    bindings.push(...bucketFilters);
   }
 
   sql += ' ORDER BY timestamp DESC LIMIT ?';
@@ -312,11 +336,96 @@ async function getRecentContexts(args: any, env: Env) {
     tags: JSON.parse(row.tags || '[]'),
     source: row.source,
     timestamp: row.timestamp,
-    metadata: JSON.parse(row.metadata || '{}')
+    metadata: JSON.parse(row.metadata || '{}'),
+    bucket: row.bucket || DEFAULT_BUCKET
+  })) || [];
+
+  return {
+    content: [`Found ${contexts.length} contexts:`, JSON.stringify(contexts, null, 2)],
+    isError: false
+  };
+}
+
+async function getRecentContexts(args: any, env: Env) {
+  const { limit = 5, source, bucket, buckets } = args;
+
+  let sql = 'SELECT * FROM contexts';
+  const bindings: any[] = [];
+
+  const bucketFilters = collectBucketFilters(bucket, buckets);
+
+  if (source) {
+    sql += ' WHERE source = ?';
+    bindings.push(source);
+  }
+
+  if (bucketFilters.length > 0) {
+    const placeholders = bucketFilters.map(() => '?').join(', ');
+    if (source) {
+      sql += ` AND bucket IN (${placeholders})`;
+    } else {
+      sql += ` WHERE bucket IN (${placeholders})`;
+    }
+    bindings.push(...bucketFilters);
+  }
+
+  sql += ' ORDER BY timestamp DESC LIMIT ?';
+  bindings.push(limit);
+
+  const results = await env.KNOWLEDGE_DB.prepare(sql).bind(...bindings).all();
+
+  const contexts = results.results?.map((row: any) => ({
+    id: row.id,
+    content: row.content,
+    tags: JSON.parse(row.tags || '[]'),
+    source: row.source,
+    timestamp: row.timestamp,
+    metadata: JSON.parse(row.metadata || '{}'),
+    bucket: row.bucket || DEFAULT_BUCKET
   })) || [];
 
   return {
     content: [`Recent ${contexts.length} contexts:`, JSON.stringify(contexts, null, 2)],
+    isError: false
+  };
+}
+
+async function getContext(args: any, env: Env) {
+  const { id, bucket } = args;
+
+  const bucketFilters = collectBucketFilters(bucket, undefined);
+
+  let sql = 'SELECT * FROM contexts WHERE id = ?';
+  const bindings: any[] = [id];
+
+  if (bucketFilters.length > 0) {
+    const placeholders = bucketFilters.map(() => '?').join(', ');
+    sql += ` AND bucket IN (${placeholders})`;
+    bindings.push(...bucketFilters);
+  }
+
+  const results = await env.KNOWLEDGE_DB.prepare(sql).bind(...bindings).all();
+  const row = results.results?.[0];
+
+  if (!row) {
+    return {
+      content: [`Context '${id}' not found`],
+      isError: true
+    };
+  }
+
+  const context: Context = {
+    id: row.id,
+    content: row.content,
+    tags: JSON.parse(row.tags || '[]'),
+    source: row.source,
+    timestamp: row.timestamp,
+    metadata: JSON.parse(row.metadata || '{}'),
+    bucket: row.bucket || DEFAULT_BUCKET
+  };
+
+  return {
+    content: [`Context ${id}:`, JSON.stringify(context, null, 2)],
     isError: false
   };
 }
@@ -391,4 +500,22 @@ async function listFiles(args: any, env: Env) {
     content: [`Found ${fileList.length} files:`, JSON.stringify(fileList, null, 2)],
     isError: false
   };
+}
+
+function collectBucketFilters(bucket?: string, buckets?: string[]): string[] {
+  const values = new Set<string>();
+
+  if (typeof bucket === 'string' && bucket.trim()) {
+    values.add(bucket.trim());
+  }
+
+  if (Array.isArray(buckets)) {
+    for (const entry of buckets) {
+      if (typeof entry === 'string' && entry.trim()) {
+        values.add(entry.trim());
+      }
+    }
+  }
+
+  return Array.from(values);
 }
