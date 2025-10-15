@@ -28,7 +28,8 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
   "content": "string (required) - The knowledge to store",
   "tags": "array of strings (optional) - Categorization tags",
   "source": "string (required) - Which LLM/tool is storing this",
-  "metadata": "object (optional) - Additional structured data"
+  "metadata": "object (optional) - Additional structured data",
+  "bucket": "string (optional, default: shared) - Storage bucket (e.g. agent-alpha, shared)"
 }
 ```
 
@@ -44,6 +45,7 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
       "content": "Harvey prefers itemized information due to ADHD",
       "tags": ["harvey", "preferences", "user-info"],
       "source": "chatgpt-session",
+      "bucket": "agent-chatgpt",
       "metadata": {"importance": "high", "category": "user-preference"}
     }
   }
@@ -51,7 +53,7 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 ```
 
 ### 2. search_contexts
-**Purpose**: Find relevant stored knowledge by keywords, tags, or source
+**Purpose**: Find relevant stored knowledge by keywords, tags, source, or bucket
 
 **Parameters**:
 ```json
@@ -59,7 +61,9 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
   "query": "string (optional) - Text to search for",
   "tags": "array of strings (optional) - Filter by tags",
   "source": "string (optional) - Filter by source LLM/tool",
-  "limit": "number (optional, default: 10) - Max results"
+  "limit": "number (optional, default: 10) - Max results",
+  "bucket": "string (optional) - Only search within this bucket",
+  "buckets": "array of strings (optional) - Search within any of these buckets"
 }
 ```
 
@@ -70,11 +74,24 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 ```json
 {
   "limit": "number (optional, default: 5) - Max results",
-  "source": "string (optional) - Filter by source LLM/tool"
+  "source": "string (optional) - Filter by source LLM/tool",
+  "bucket": "string (optional) - Only include contexts from this bucket",
+  "buckets": "array of strings (optional) - Include contexts from any of these buckets"
 }
 ```
 
-### 4. store_file
+### 4. get_context
+**Purpose**: Fetch a single context entry by ID
+
+**Parameters**:
+```json
+{
+  "id": "string (required) - ID returned when the context was stored",
+  "bucket": "string (optional) - Bucket to disambiguate if IDs collide"
+}
+```
+
+### 5. store_file
 **Purpose**: Store files in shared R2 storage
 
 **Parameters**:
@@ -88,7 +105,7 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 }
 ```
 
-### 5. get_file
+### 6. get_file
 **Purpose**: Retrieve a stored file
 
 **Parameters**:
@@ -98,7 +115,7 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 }
 ```
 
-### 6. list_files
+### 7. list_files
 **Purpose**: List stored files with optional filtering
 
 **Parameters**:
@@ -120,7 +137,7 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 }
 ```
 
-**Expected Response**: List of 6 available tools
+**Expected Response**: List of 7 available tools
 
 ### Step 2: Store Your First Context
 ```json
@@ -133,7 +150,8 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
     "arguments": {
       "content": "Successfully connected to Harvey's knowledge hub",
       "tags": ["onboarding", "test"],
-      "source": "your-llm-name-here"
+      "source": "your-llm-name-here",
+      "bucket": "shared"
     }
   }
 }
@@ -149,11 +167,38 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
     "name": "search_contexts",
     "arguments": {
       "query": "harvey",
-      "limit": 5
+      "limit": 5,
+      "buckets": ["shared", "agent-your-llm-name-here"]
     }
   }
 }
 ```
+
+### Step 4: Fetch a Single Context by ID
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "get_context",
+    "arguments": {
+      "id": "<context-id-from-store>",
+      "bucket": "agent-your-llm-name-here"
+    }
+  }
+}
+```
+
+## 🪣 Bucket Strategy
+
+Use buckets to keep agent-specific knowledge organized while still collaborating through the shared pool:
+
+- `shared` – Default shared memory accessible to every agent
+- `agent-<name>` – Dedicated bucket for a specific agent (e.g. `agent-claude`, `agent-chatgpt`)
+- Custom buckets – Any string label works if you want to group by project or capability
+
+When searching or fetching, provide multiple buckets (e.g. `["shared", "agent-chatgpt"]`) to blend shared memory with an agent's private notes.
 
 ## 🏷️ Tagging Best Practices
 
