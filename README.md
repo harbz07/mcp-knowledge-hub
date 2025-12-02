@@ -6,18 +6,46 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 ## 🔗 Connection Details
 
 ### Endpoint Information
-- **MCP Server URL**: `https://knowledge-hub-mcp.harveytagalicud7.workers.dev`
-- **Protocol**: JSON-RPC 2.0 over HTTP
-- **Method**: POST requests only
+- **HTTPS MCP Server URL**: `https://knowledge-hub-mcp.harveytagalicud7.workers.dev`
+- **STDIO bridge (local)**: `node scripts/stdio-proxy.js`
+- **Protocol**: JSON-RPC 2.0 (HTTP POST for the worker; newline-delimited JSON via STDIO)
 - **Content-Type**: `application/json`
 
 ### Authentication
-**⚠️ IMPORTANT**: This server currently has **NO AUTHENTICATION**. 
+**⚠️ IMPORTANT**: This server currently has **NO AUTHENTICATION**.
 - No API tokens required
 - No bearer auth headers needed
 - Open access (consider this for production use)
 
+### Transport Examples
+- **HTTP (e.g., Claude Desktop/Code)**
+  ```json
+  {
+    "mcpServers": {
+      "knowledge-hub": {
+        "transport": {"type": "http", "url": "https://knowledge-hub-mcp.harveytagalicud7.workers.dev"}
+      }
+    }
+  }
+  ```
+- **STDIO (local proxy that forwards to HTTPS)**
+  ```json
+  {
+    "mcpServers": {
+      "knowledge-hub": {
+        "command": "node",
+        "args": ["scripts/stdio-proxy.js"],
+        "env": {"MCP_HTTPS_ENDPOINT": "https://knowledge-hub-mcp.harveytagalicud7.workers.dev"}
+      }
+    }
+  }
+  ```
+
+Both transports expose identical tools and client-scoped storage.
+
 ## 🛠️ Available Tools
+
+Buckets are client-scoped by default. Pass `clientId` to isolate storage for a specific organization/user; omit to fall back to the shared `public` bucket.
 
 ### 1. store_context
 **Purpose**: Store knowledge/context for sharing between LLMs
@@ -28,7 +56,8 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
   "content": "string (required) - The knowledge to store",
   "tags": "array of strings (optional) - Categorization tags",
   "source": "string (required) - Which LLM/tool is storing this",
-  "metadata": "object (optional) - Additional structured data"
+  "metadata": "object (optional) - Additional structured data",
+  "clientId": "string (optional, default: public) - Client bucket id"
 }
 ```
 
@@ -59,7 +88,8 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
   "query": "string (optional) - Text to search for",
   "tags": "array of strings (optional) - Filter by tags",
   "source": "string (optional) - Filter by source LLM/tool",
-  "limit": "number (optional, default: 10) - Max results"
+  "limit": "number (optional, default: 10) - Max results",
+  "clientId": "string (optional, default: public) - Client bucket id"
 }
 ```
 
@@ -70,7 +100,8 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 ```json
 {
   "limit": "number (optional, default: 5) - Max results",
-  "source": "string (optional) - Filter by source LLM/tool"
+  "source": "string (optional) - Filter by source LLM/tool",
+  "clientId": "string (optional, default: public) - Client bucket id"
 }
 ```
 
@@ -84,7 +115,8 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
   "content": "string (required) - File content (base64 for binary)",
   "contentType": "string (optional) - MIME type",
   "tags": "array of strings (optional) - Categorization tags",
-  "source": "string (required) - Which LLM/tool is storing this"
+  "source": "string (required) - Which LLM/tool is storing this",
+  "clientId": "string (optional, default: public) - Client bucket id"
 }
 ```
 
@@ -94,7 +126,8 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 **Parameters**:
 ```json
 {
-  "filename": "string (required) - Name of the file to retrieve"
+  "filename": "string (required) - Name of the file to retrieve",
+  "clientId": "string (optional, default: public) - Client bucket id"
 }
 ```
 
@@ -105,9 +138,56 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
 ```json
 {
   "prefix": "string (optional) - Filter by filename prefix",
-  "limit": "number (optional, default: 20) - Max results"
+  "limit": "number (optional, default: 20) - Max results",
+  "clientId": "string (optional, default: public) - Client bucket id"
 }
 ```
+
+### 7. ensure_client_bucket
+**Purpose**: Create or describe an isolated client bucket for contexts, files, and events.
+
+**Parameters**:
+```json
+{
+  "clientId": "string (required) - Unique client identifier",
+  "label": "string (optional) - Friendly label"
+}
+```
+
+### 8. record_event
+**Purpose**: Write a structured event into the client-shared events hub (Who/Why/Effects blocks).
+
+**Parameters**:
+```json
+{
+  "event": {
+    "title": "string (required)",
+    "description": "string (optional)",
+    "happened_at": "ISO string (optional, defaults to now)",
+    "who": "array<string> (required) - participants",
+    "why": "array<string> (required) - catalysts/reasons"
+  },
+  "place": "string (required) - where the event occurred",
+  "effects": "array<Effect> (optional) - Effects blocks with target_id/target_kind/summary/valence/intensity",
+  "clientId": "string (optional, default: public)"
+}
+```
+
+### 9. list_events
+**Purpose**: List recent events for a given client bucket.
+
+**Parameters**:
+```json
+{
+  "clientId": "string (optional, default: public)",
+  "limit": "number (optional, default: 10)"
+}
+```
+
+### 10. get_cypher_event_schema
+**Purpose**: Return the Cypher schema and templates that map the events hub into Neo4j.
+
+**Parameters**: _none_
 
 ## 🚀 Quick Start for LLMs
 
@@ -154,6 +234,11 @@ A shared knowledge base that allows multiple LLMs to store and retrieve context,
   }
 }
 ```
+
+## 🧭 Events Hub & Cypher Schema
+- Use `record_event` to capture Who/Why/Effects blocks inside a client bucket; `list_events` retrieves them with newest first.
+- Call `get_cypher_event_schema` to fetch the Neo4j-ready Cypher templates that mirror the in-worker schema for downstream graph syncing.
+- Effects blocks (target_id/target_kind/summary/valence/intensity) are stored alongside core event metadata to keep downstream graph materialization lossless.
 
 ## 🏷️ Tagging Best Practices
 
