@@ -1,0 +1,19 @@
+- name: agent-update
+  color: "0075ca"
+  description: "An update published by an agent or contributor"
+
+- name: sent
+  color: "e4e669"
+  description: "Digest has been sent for this issue"
+
+- name: "target:handoffs"
+  color: "d93f0b"
+  description: "Target channel: agent handoffs"
+
+- name: "target:general"
+  color: "0e8a16"
+  description: "Target channel: general"
+
+- name: "target:both"
+  color: "5319e7"
+  description: "Target channel: both handoffs and general"

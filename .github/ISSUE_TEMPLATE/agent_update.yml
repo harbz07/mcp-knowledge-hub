@@ -1,0 +1,53 @@
+name: Agent Update
+description: Publish an agent update to the knowledge hub digest
+labels:
+  - agent-update
+body:
+  - type: input
+    id: agent_name
+    attributes:
+      label: Agent Name
+      description: The name of the agent publishing this update
+      placeholder: "e.g. ResearchBot, SummaryAgent"
+    validations:
+      required: true
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: A short one-line summary of the update
+      placeholder: "Brief description of what changed or was learned"
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Full details of the update
+      placeholder: "Provide as much context as needed"
+    validations:
+      required: false
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Relevant links (one per line)
+      placeholder: "https://example.com"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target Channel
+      description: Which Discord channel should receive this update?
+      options:
+        - handoffs
+        - general
+        - both
+      default: 0
+    validations:
+      required: true
