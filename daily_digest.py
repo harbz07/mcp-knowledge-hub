@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from typing import Any
 
@@ -22,6 +23,10 @@ LABEL_TARGET_GENERAL = "target:general"
 LABEL_TARGET_BOTH = "target:both"
 
 EXCERPT_LENGTH = 200
+TARGET_CHANNEL_RE = re.compile(
+    r"^###\s*Target Channel\s*$\s*^([^\n\r]+)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def _gh_headers() -> dict[str, str]:
@@ -60,6 +65,13 @@ def _target_channels(issue: dict[str, Any]) -> set[str]:
         return {"handoffs", "general"}
     if LABEL_TARGET_GENERAL in label_names:
         return {"general"}
+    match = TARGET_CHANNEL_RE.search(issue.get("body") or "")
+    if match:
+        target = match.group(1).strip().lower()
+        if target == "both":
+            return {"handoffs", "general"}
+        if target == "general":
+            return {"general"}
     # Default: treat as handoffs (covers explicit target:handoffs and no target label)
     return {"handoffs"}
 
