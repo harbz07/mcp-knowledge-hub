@@ -72,6 +72,8 @@ def _target_channels(issue: dict[str, Any]) -> set[str]:
             return {"handoffs", "general"}
         if target == "general":
             return {"general"}
+        if target == "handoffs":
+            return {"handoffs"}
     # Default: treat as handoffs (covers explicit target:handoffs and no target label)
     return {"handoffs"}
 

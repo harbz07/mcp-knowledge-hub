@@ -30,6 +30,10 @@ class TargetChannelsTests(unittest.TestCase):
         }
         self.assertEqual(_target_channels(issue), {"handoffs", "general"})
 
+    def test_routes_to_handoffs_from_form_target(self) -> None:
+        issue = {"labels": [], "body": "### Target Channel\n\nhandoffs"}
+        self.assertEqual(_target_channels(issue), {"handoffs"})
+
 
 if __name__ == "__main__":
     unittest.main()
